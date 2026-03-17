@@ -1,5 +1,5 @@
 // app.js
-import { setupAuthListener } from './auth.js';
+import { setupAuthListener, clearAuthStatus } from './auth.js';
 import { db, auth } from './firebase-config.js';
 import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
@@ -114,6 +114,7 @@ async function startSession(user, guestMode = false) {
         await fetchProgress();
     }
     
+    clearAuthStatus();
     renderMap();
     switchView(viewMap);
 }
@@ -133,6 +134,8 @@ function endSession() {
     // Reset Header UI
     document.querySelector('.level-badge').textContent = 'Lvl 1';
     document.querySelector('.user-progress').childNodes[1].textContent = 'XP: 0/100';
+
+    clearAuthStatus();
 }
 
 function resetCourseData() {

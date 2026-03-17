@@ -72,6 +72,12 @@ btnGuest.addEventListener('click', () => {
     window.dispatchEvent(new CustomEvent('guest-login', { detail: guestUser }));
 });
 
+export function clearAuthStatus() {
+    if (!statusEl) return;
+    statusEl.innerHTML = '';
+    statusEl.className = 'auth-status';
+}
+
 function showStatus(type, html) {
     if (!statusEl) return;
     statusEl.innerHTML  = html;
