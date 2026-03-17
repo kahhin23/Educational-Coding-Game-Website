@@ -39,6 +39,10 @@
             <div class="user-progress">
                 <span class="level-badge">Lvl 1</span>
                 XP: 0/100
+                <button id="btn-signout" class="btn-signout" title="Sign Out">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Sign Out</span>
+                </button>
             </div>
         </header>
 
@@ -118,5 +122,14 @@
     <!-- Pyodide Integration -->
     <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
     <script src="app.js"></script>
+    <script type="module">
+        import { auth } from './firebase-config.js';
+        import { signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+        document.getElementById('btn-signout').addEventListener('click', async () => {
+            sessionStorage.removeItem('pythonQuestUser');
+            try { await signOut(auth); } catch (e) {}
+            window.location.href = 'index.html';
+        });
+    </script>
 </body>
 </html>

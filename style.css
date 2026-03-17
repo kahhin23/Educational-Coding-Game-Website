@@ -115,6 +115,27 @@ body {
     font-weight: 600;
 }
 
+.btn-signout {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-family: 'Outfit', sans-serif;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    transition: all 0.2s ease;
+    margin-left: 8px;
+}
+.btn-signout:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
 /* View Views Management */
 .view {
     display: none;
