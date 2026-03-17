@@ -186,6 +186,8 @@ body {
 
 .brand-panel {
     background: linear-gradient(145deg, rgba(79, 70, 229, 0.2), rgba(139, 92, 246, 0.15));
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     padding: 60px 50px;
     display: flex;
     flex-direction: column;
@@ -223,6 +225,9 @@ body {
 }
 
 .glass-card {
+    background: rgba(10, 10, 15, 0.7);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
     padding: 60px 50px;
     display: flex;
     flex-direction: column;
@@ -231,21 +236,67 @@ body {
 }
 
 .btn-google {
-    display: flex; align-items: center; justify-content: center; gap: 14px;
-    padding: 16px; background: white; color: #1f1f1f; border: none;
-    border-radius: 14px; font-weight: 600; cursor: pointer; transition: all 0.25s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    width: 100%;
+    padding: 16px 24px;
+    background: white;
+    color: #1f1f1f;
+    border: none;
+    border-radius: 14px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
 }
-.btn-google:hover { transform: translateY(-3px); background: #f1f1f1; }
+
+.btn-google:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    background: #f1f1f1;
+}
+
+.btn-google:active { transform: translateY(0); }
+
+.google-icon {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+}
 
 .divider { display: flex; align-items: center; gap: 16px; color: var(--text-muted); font-size: 0.9rem; }
 .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
 .btn-guest {
-    display: flex; align-items: center; justify-content: center; gap: 12px;
-    padding: 16px; background: transparent; color: white; border: 1px solid var(--border);
-    border-radius: 14px; cursor: pointer; transition: all 0.25s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    width: 100%;
+    padding: 16px 24px;
+    background: transparent;
+    color: var(--text-main);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.25s ease;
 }
-.btn-guest:hover { background: var(--surface); transform: translateY(-3px); }
+
+.btn-guest:hover {
+    background: var(--surface);
+    border-color: rgba(255,255,255,0.2);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+}
+
+.btn-guest:active { transform: translateY(0); }
 
 .guest-note { font-size: 0.85rem; color: var(--text-muted); display: flex; align-items: center; gap: 7px; }
 .auth-status { display: none; padding: 14px; border-radius: 10px; animation: fadeIn 0.3s ease; }
