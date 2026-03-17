@@ -121,9 +121,25 @@ async function startSession(user, guestMode = false) {
 function endSession() {
     currentUser = null;
     isGuest = false;
+    
+    // Reset Progress in memory
+    resetCourseData();
+    
+    // Reset UI
     gameContainer.style.display = 'none';
     viewLogin.style.display = 'flex';
     viewLogin.classList.add('active-view');
+    
+    // Reset Header UI
+    document.querySelector('.level-badge').textContent = 'Lvl 1';
+    document.querySelector('.user-progress').childNodes[1].textContent = 'XP: 0/100';
+}
+
+function resetCourseData() {
+    courseData.stages.forEach((stage, idx) => {
+        stage.completed = false;
+        stage.locked = idx === 0 ? false : true;
+    });
 }
 
 async function fetchProgress() {
