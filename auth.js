@@ -15,7 +15,7 @@ initStars();
 onAuthStateChanged(auth, (user) => {
     if (user) {
         // Google user already authenticated — redirect
-        window.location.href = 'index.html';
+        window.location.href = 'dashboard.html';
     }
 });
 
@@ -50,7 +50,7 @@ btnGoogle.addEventListener('click', async () => {
 btnGuest.addEventListener('click', () => {
     // Mark session as guest (no Firebase auth needed)
     sessionStorage.setItem('pythonQuestUser', JSON.stringify({ type: 'guest' }));
-    window.location.href = 'index.html';
+    window.location.href = 'dashboard.html';
 });
 
 // --- UI Helpers ---
