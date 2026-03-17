@@ -8,53 +8,72 @@ const btnGoogle = document.getElementById('btn-google');
 const btnGuest  = document.getElementById('btn-guest');
 const statusEl  = document.getElementById('auth-status');
 
-// Star canvas background
+// Initial load: setup stars
 initStars();
 
-// If already signed-in (Google), redirect straight to game
-onAuthStateChanged(auth, (user) => {
-    if (user) {
-        // Google user already authenticated — redirect
-        window.location.href = 'dashboard.html';
-    }
-});
+// --- Auth State Handler ---
+// This will be called on page load and after every sign-in/out
+export function setupAuthListener(onUserAuthenticated, onUserLoggedOut) {
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            // Check if user exists in Firestore, if not create
+            const playerDoc = await getPlayerData(user.uid);
+            if (!playerDoc) {
+                await createPlayerProfile(user);
+            }
+            onUserAuthenticated(user, false); // false = not a guest
+        } else {
+            // Check session storage for guest
+            const guest = sessionStorage.getItem('pythonQuestUser');
+            if (guest) {
+                onUserAuthenticated(JSON.parse(guest), true); // true = is a guest
+            } else {
+                onUserLoggedOut();
+            }
+        }
+    });
+}
 
-// --- Google Sign-In ---
+async function getPlayerData(uid) {
+    const playerRef = doc(db, 'players', uid);
+    const snap = await getDoc(playerRef);
+    return snap.exists() ? snap.data() : null;
+}
+
+async function createPlayerProfile(user) {
+    const playerRef = doc(db, 'players', user.uid);
+    await setDoc(playerRef, {
+        displayName: user.displayName,
+        email:       user.email,
+        photoURL:    user.photoURL,
+        progress:    {},
+        createdAt:   new Date(),
+        xp: 0,
+        level: 1
+    });
+}
+
+// --- Interaction Handlers ---
 btnGoogle.addEventListener('click', async () => {
     showStatus('loading', '<i class="fa-solid fa-spinner fa-spin"></i> Connecting to Google…');
     try {
-        const result = await signInWithPopup(auth, googleProvider);
-        const user   = result.user;
-
-        // Create/update Firestore player doc
-        const playerRef = doc(db, 'players', user.uid);
-        const playerDoc = await getDoc(playerRef);
-        if (!playerDoc.exists()) {
-            await setDoc(playerRef, {
-                displayName: user.displayName,
-                email:       user.email,
-                photoURL:    user.photoURL,
-                progress:    {},
-                createdAt:   new Date()
-            });
-        }
-
-        // onAuthStateChanged will fire and redirect automatically
+        await signInWithPopup(auth, googleProvider);
+        // onAuthStateChanged will handle the view switch
     } catch (err) {
         console.error(err);
-        showStatus('error', '<i class="fa-solid fa-triangle-exclamation"></i> Sign-in failed. Please try again.');
+        showStatus('error', '<i class="fa-solid fa-triangle-exclamation"></i> Sign-in failed.');
     }
 });
 
-// --- Guest Login ---
 btnGuest.addEventListener('click', () => {
-    // Mark session as guest (no Firebase auth needed)
-    sessionStorage.setItem('pythonQuestUser', JSON.stringify({ type: 'guest' }));
-    window.location.href = 'dashboard.html';
+    const guestUser = { displayName: 'Guest Explorer', type: 'guest' };
+    sessionStorage.setItem('pythonQuestUser', JSON.stringify(guestUser));
+    // Trigger manual start for guest since onAuthStateChanged won't fire
+    window.dispatchEvent(new CustomEvent('guest-login', { detail: guestUser }));
 });
 
-// --- UI Helpers ---
 function showStatus(type, html) {
+    if (!statusEl) return;
     statusEl.innerHTML  = html;
     statusEl.className  = `auth-status show ${type}`;
 }

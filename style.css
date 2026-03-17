@@ -37,6 +37,17 @@ body {
     width: 100%;
     height: 100%;
     z-index: 1;
+    overflow: hidden;
+}
+
+#star-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -2;
+    pointer-events: none;
 }
 
 .bg-orb {
@@ -65,9 +76,20 @@ body {
     animation-delay: -10s;
 }
 
+.orb-3 {
+    top: 50%;
+    left: 50%;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, #10b981, transparent 70%);
+    opacity: 0.15;
+    animation-delay: -14s;
+    transform: translate(-50%, -50%);
+}
+
 @keyframes float {
     0% { transform: translate(0, 0); }
-    100% { transform: translate(50px, 50px); }
+    100% { transform: translate(40px, 40px); }
 }
 
 /* Glassmorphism Utilities */
@@ -136,6 +158,107 @@ body {
     color: var(--danger);
 }
 
+/* -------- LOGIN VIEW -------- */
+#view-login {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    top: 0;
+    height: 100vh;
+}
+
+.login-wrapper {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+    max-width: 1000px;
+    min-height: 600px;
+    background: rgba(10, 10, 15, 0.4);
+    backdrop-filter: blur(20px);
+    border-radius: 28px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+    z-index: 10;
+}
+
+.brand-panel {
+    background: linear-gradient(145deg, rgba(79, 70, 229, 0.2), rgba(139, 92, 246, 0.15));
+    padding: 60px 50px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 20px;
+    border-right: 1px solid var(--border);
+}
+
+.brand-logo { font-size: 4rem; color: #a5b4fc; }
+.icon-spin { animation: pulse-glow 3s ease-in-out infinite; }
+@keyframes pulse-glow {
+    0%, 100% { text-shadow: 0 0 20px rgba(165, 180, 252, 0.4); }
+    50% { text-shadow: 0 0 40px rgba(165, 180, 252, 0.9), 0 0 80px rgba(79, 70, 229, 0.5); }
+}
+
+.brand-title {
+    font-size: 2.8rem;
+    font-weight: 700;
+    background: linear-gradient(to right, #fff, #a5b4fc);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.brand-tagline { color: var(--text-muted); line-height: 1.6; }
+.brand-features { display: flex; flex-direction: column; gap: 16px; margin-top: 20px; }
+.feature-item { display: flex; align-items: center; gap: 14px; color: var(--text-muted); }
+.feature-item i {
+    width: 36px; height: 36px;
+    background: rgba(79, 70, 229, 0.2);
+    border: 1px solid rgba(79, 70, 229, 0.4);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    color: #a5b4fc;
+}
+
+.glass-card {
+    padding: 60px 50px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 20px;
+}
+
+.btn-google {
+    display: flex; align-items: center; justify-content: center; gap: 14px;
+    padding: 16px; background: white; color: #1f1f1f; border: none;
+    border-radius: 14px; font-weight: 600; cursor: pointer; transition: all 0.25s;
+}
+.btn-google:hover { transform: translateY(-3px); background: #f1f1f1; }
+
+.divider { display: flex; align-items: center; gap: 16px; color: var(--text-muted); font-size: 0.9rem; }
+.divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+.btn-guest {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    padding: 16px; background: transparent; color: white; border: 1px solid var(--border);
+    border-radius: 14px; cursor: pointer; transition: all 0.25s;
+}
+.btn-guest:hover { background: var(--surface); transform: translateY(-3px); }
+
+.guest-note { font-size: 0.85rem; color: var(--text-muted); display: flex; align-items: center; gap: 7px; }
+.auth-status { display: none; padding: 14px; border-radius: 10px; animation: fadeIn 0.3s ease; }
+.auth-status.show { display: flex; align-items: center; gap: 10px; }
+.auth-status.loading { background: rgba(79, 70, 229, 0.1); color: #a5b4fc; }
+.auth-status.error { background: rgba(239, 68, 68, 0.1); color: #fca5a5; }
+
+@media (max-width: 720px) {
+    .login-wrapper { grid-template-columns: 1fr; max-width: 480px; }
+    .brand-panel { padding: 40px 40px 20px; border-right: none; border-bottom: 1px solid var(--border); }
+    .brand-features { display: none; }
+}
+
 /* View Views Management */
 .view {
     display: none;
@@ -187,6 +310,7 @@ body {
     margin-bottom: 50px;
     background: linear-gradient(to right, #fff, #a5b4fc);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 

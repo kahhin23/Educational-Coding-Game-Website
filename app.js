@@ -1,9 +1,15 @@
 // app.js
+import { setupAuthListener } from './auth.js';
+import { db, auth } from './firebase-config.js';
+import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
 // --- Global State ---
 let pyodideInstance = null;
 let currentStageId = null;
-let currentMode = 'learn'; // 'learn' (includes MCQ) -> 'code' (coding challenge)
+let currentMode = 'learn';
+let currentUser = null;
+let isGuest = false;
 
 // --- Course Data ---
 const courseData = {
@@ -36,16 +42,16 @@ const courseData = {
         {
             id: 'stage-2',
             title: '2. Storing Energy',
-            locked: true, // Initially locked
-            learningContent: '<p>You have learned to speak. Now you must learn to remember...</p>',
-            mcq: { question: 'Coming soon...', options: ['A'], correctIndex: 0 },
-            codingChallenge: { prompt: 'Coming soon...', expectedOutput: '' }
+            locked: true,
+            learningContent: '<p>You have learned to speak. Now you must learn to remember variables...</p><p>Variables are used to store calculations or values. For example: <span class="inline-code">x = 5</span></p>',
+            mcq: { question: 'How do you assign the value 10 to a variable named energy?', options: ['energy := 10', 'energy = 10', 'set energy to 10'], correctIndex: 1 },
+            codingChallenge: { prompt: 'Create a variable named <strong>power</strong> and set it to <strong>9000</strong>, then print it.', expectedOutput: '9000\n' }
         },
         {
             id: 'stage-3',
             title: '3. Making Choices',
             locked: true,
-            learningContent: '<p>The path splits. How will your code decide which way to go?</p>',
+            learningContent: '<p>The path splits. Use <span class="inline-code">if</span> statements to make decisions.</p>',
             mcq: { question: 'Coming soon...', options: ['A'], correctIndex: 0 },
             codingChallenge: { prompt: 'Coming soon...', expectedOutput: '' }
         }
@@ -53,11 +59,14 @@ const courseData = {
 };
 
 // --- DOM Elements ---
+const viewLogin = document.getElementById('view-login');
+const gameContainer = document.getElementById('game-container');
 const viewMap = document.getElementById('view-map');
 const viewStage = document.getElementById('view-stage');
 const stageNodesWrapper = document.getElementById('stage-nodes-wrapper');
 
 const btnBackMap = document.getElementById('btn-back-map');
+const btnSignOut = document.getElementById('btn-signout');
 const stageTitleEl = document.getElementById('stage-title');
 
 // Left Panel Modes
@@ -81,22 +90,116 @@ const editorFeedbackEl = document.getElementById('editor-feedback');
 
 // --- Initialization ---
 async function init() {
-    renderMap();
     initEventListeners();
     await initPyodide();
+
+    // Setup Auth
+    setupAuthListener(startSession, endSession);
+    
+    // Listen for Guest login
+    window.addEventListener('guest-login', (e) => startSession(e.detail, true));
+}
+
+async function startSession(user, guestMode = false) {
+    currentUser = user;
+    isGuest = guestMode;
+    
+    // Logic: Hide login, show game
+    viewLogin.classList.remove('active-view');
+    viewLogin.style.display = 'none';
+    gameContainer.style.display = 'block';
+    
+    // Fetch persistence if not guest
+    if (!isGuest) {
+        await fetchProgress();
+    }
+    
+    renderMap();
+    switchView(viewMap);
+}
+
+function endSession() {
+    currentUser = null;
+    isGuest = false;
+    gameContainer.style.display = 'none';
+    viewLogin.style.display = 'flex';
+    viewLogin.classList.add('active-view');
+}
+
+async function fetchProgress() {
+    try {
+        const playerRef = doc(db, 'players', currentUser.uid);
+        const snap = await getDoc(playerRef);
+        if (snap.exists()) {
+            const data = snap.data();
+            const progress = data.progress || {};
+            // Update courseData
+            courseData.stages.forEach(stage => {
+                if (progress[stage.id]) {
+                    stage.completed = true;
+                    stage.locked = false;
+                }
+            });
+            // Unlock next stage logic
+            for (let i = 0; i < courseData.stages.length - 1; i++) {
+                if (courseData.stages[i].completed) {
+                    courseData.stages[i+1].locked = false;
+                }
+            }
+            
+            // Update XP/Level UI
+            document.querySelector('.level-badge').textContent = `Lvl ${data.level || 1}`;
+            document.querySelector('.user-progress').childNodes[1].textContent = `XP: ${data.xp || 0}/100`;
+        }
+    } catch (err) {
+        console.error("Error fetching progress:", err);
+    }
+}
+
+async function saveProgress(stageId) {
+    if (isGuest) return;
+    try {
+        const playerRef = doc(db, 'players', currentUser.uid);
+        const snap = await getDoc(playerRef);
+        let currentXP = 0;
+        let currentLevel = 1;
+
+        if (snap.exists()) {
+            currentXP = snap.data().xp || 0;
+            currentLevel = snap.data().level || 1;
+        }
+
+        // Add 50 XP per stage
+        currentXP += 50;
+        if (currentXP >= 100) {
+            currentXP -= 100;
+            currentLevel += 1;
+        }
+
+        await updateDoc(playerRef, {
+            [`progress.${stageId}`]: true,
+            xp: currentXP,
+            level: currentLevel
+        });
+
+        // Update UI
+        document.querySelector('.level-badge').textContent = `Lvl ${currentLevel}`;
+        document.querySelector('.user-progress').childNodes[1].textContent = `XP: ${currentXP}/100`;
+    } catch (err) {
+        console.error("Error saving progress:", err);
+    }
 }
 
 async function initPyodide() {
+    if (!btnRun) return;
     btnRun.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading Engine...';
     btnRun.disabled = true;
     try {
         pyodideInstance = await loadPyodide();
-        console.log('Pyodide initialized.');
         btnRun.innerHTML = '<i class="fa-solid fa-play"></i> Run Code';
         btnRun.disabled = false;
     } catch (err) {
         console.error('Failed to load Pyodide', err);
-        btnRun.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Error';
     }
 }
 
@@ -108,43 +211,26 @@ function renderMap() {
         node.className = `stage-node ${stage.locked ? 'locked' : ''} ${stage.completed ? 'completed' : ''}`;
         node.setAttribute('data-title', stage.title);
         node.textContent = index + 1;
-        
         node.addEventListener('click', () => {
-            if (!stage.locked) {
-                openStage(stage.id);
-            }
+            if (!stage.locked) openStage(stage.id);
         });
-
         stageNodesWrapper.appendChild(node);
     });
 }
 
-// --- Stage View Logic ---
 function openStage(stageId) {
     currentStageId = stageId;
-    currentMode = 'learn';
-    
     const stageData = courseData.stages.find(s => s.id === stageId);
-    if (!stageData) return;
-
-    // Set Data
     stageTitleEl.textContent = stageData.title;
     learningContentEl.innerHTML = stageData.learningContent;
-    
-    // MCQ
     mcqQuestionEl.textContent = stageData.mcq.question;
     renderMCQOptions(stageData.mcq);
     hideFeedback(mcqFeedbackEl);
-    
-    // Coding Challenge
     codingPromptEl.innerHTML = stageData.codingChallenge.prompt;
     expectedOutputTextEl.textContent = stageData.codingChallenge.expectedOutput;
     codeEditor.value = '';
     consoleOutput.textContent = '';
-    consoleOutput.className = 'console-box';
     hideFeedback(editorFeedbackEl);
-
-    // Switch Views & Modes
     switchView(viewStage);
     setMode('learn');
 }
@@ -161,152 +247,74 @@ function renderMCQOptions(mcqData) {
 }
 
 function handleMCQAnswer(selectedIndex, correctIndex, optionElement) {
-    // Reset classes
-    document.querySelectorAll('.mcq-option').forEach(el => {
-        el.classList.remove('correct', 'incorrect');
-        el.style.pointerEvents = 'none'; // Disable click temporarily
-    });
-
     if (selectedIndex === correctIndex) {
         optionElement.classList.add('correct');
         showFeedback(mcqFeedbackEl, 'Correct! Concept verified.', 'success');
-        
-        // Transition to coding mode after a short delay
-        setTimeout(() => {
-            setMode('code');
-        }, 1500);
+        setTimeout(() => setMode('code'), 1000);
     } else {
         optionElement.classList.add('incorrect');
-        showFeedback(mcqFeedbackEl, 'Incorrect. Review the content on the left.', 'error');
-        
-        // Re-enable clicks
-        setTimeout(() => {
-            document.querySelectorAll('.mcq-option').forEach(el => el.style.pointerEvents = 'auto');
-        }, 1000);
+        showFeedback(mcqFeedbackEl, 'Incorrect. Review the content.', 'error');
     }
 }
 
-// --- Code Execution Logic ---
 async function runPythonCode() {
-    if (!pyodideInstance) {
-        showFeedback(editorFeedbackEl, 'Engine not ready yet.', 'error');
-        return;
-    }
-
     const code = codeEditor.value;
     const stageData = courseData.stages.find(s => s.id === currentStageId);
     const expectedOutput = stageData.codingChallenge.expectedOutput;
-
-    // Reset console
     consoleOutput.textContent = '';
-    consoleOutput.className = 'console-box';
-    hideFeedback(editorFeedbackEl);
-
-    // Setup stdout capture
     let output = '';
-    pyodideInstance.setStdout({
-        batched: (str) => {
-            output += str + '\n';
-            consoleOutput.textContent += str + '\n';
-        }
-    });
-
+    pyodideInstance.setStdout({ batched: (str) => { output += str + '\n'; consoleOutput.textContent += str + '\n'; }});
     try {
-        btnRun.disabled = true;
-        btnRun.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Running...';
-        
-        // Execute Code
         await pyodideInstance.runPythonAsync(code);
-        
-        // Verification
         if (output === expectedOutput) {
             showFeedback(editorFeedbackEl, 'Success! Stage completed.', 'success');
             markStageCompleted(currentStageId);
-            
-            // Go back to map after delay
-            setTimeout(() => {
-                switchView(viewMap);
-                renderMap();
-            }, 2000);
+            await saveProgress(currentStageId);
+            setTimeout(() => { switchView(viewMap); renderMap(); }, 1500);
         } else {
-            showFeedback(editorFeedbackEl, 'Output does not match expected result.', 'error');
+            showFeedback(editorFeedbackEl, 'Output does not match.', 'error');
         }
-
     } catch (err) {
         consoleOutput.textContent += err.toString();
-        consoleOutput.className = 'console-box error-text';
-        showFeedback(editorFeedbackEl, 'Execution Error', 'error');
-    } finally {
-        btnRun.disabled = false;
-        btnRun.innerHTML = '<i class="fa-solid fa-play"></i> Run Code';
-        // Reset stdout to default just in case
-        pyodideInstance.setStdout({}); 
+        showFeedback(editorFeedbackEl, 'Error', 'error');
     }
 }
 
 function markStageCompleted(stageId) {
-    const stageIndex = courseData.stages.findIndex(s => s.id === stageId);
-    if (stageIndex > -1) {
-        courseData.stages[stageIndex].completed = true;
-        // Unlock next stage if it exists
-        if (stageIndex + 1 < courseData.stages.length) {
-            courseData.stages[stageIndex + 1].locked = false;
-        }
+    const idx = courseData.stages.findIndex(s => s.id === stageId);
+    if (idx > -1) {
+        courseData.stages[idx].completed = true;
+        if (idx + 1 < courseData.stages.length) courseData.stages[idx+1].locked = false;
     }
 }
 
-// --- UI Helpers ---
-function switchView(targetView) {
+function switchView(target) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active-view'));
-    targetView.classList.add('active-view');
+    target.classList.add('active-view');
 }
 
 function setMode(mode) {
     currentMode = mode;
     if (mode === 'learn') {
-        learningContentEl.classList.add('active-mode');
-        codingInstructionsEl.classList.remove('active-mode');
-        
-        mcqContainer.classList.add('active-mode');
-        editorContainer.classList.remove('active-mode');
-    } else if (mode === 'code') {
-        learningContentEl.classList.remove('active-mode');
-        codingInstructionsEl.classList.add('active-mode');
-        
-        mcqContainer.classList.remove('active-mode');
-        editorContainer.classList.add('active-mode');
+        learningContentEl.classList.add('active-mode'); mcqContainer.classList.add('active-mode');
+        codingInstructionsEl.classList.remove('active-mode'); editorContainer.classList.remove('active-mode');
+    } else {
+        learningContentEl.classList.remove('active-mode'); mcqContainer.classList.remove('active-mode');
+        codingInstructionsEl.classList.add('active-mode'); editorContainer.classList.add('active-mode');
     }
 }
 
-function showFeedback(element, text, type) {
-    element.textContent = text;
-    element.className = `feedback-msg show ${type}`;
-}
-function hideFeedback(element) {
-    element.className = 'feedback-msg';
-}
+function showFeedback(el, text, type) { el.textContent = text; el.className = `feedback-msg show ${type}`; }
+function hideFeedback(el) { el.className = 'feedback-msg'; }
 
 function initEventListeners() {
-    btnBackMap.addEventListener('click', () => {
-        switchView(viewMap);
-        renderMap();
-    });
-
-    btnRun.addEventListener('click', runPythonCode);
-    
-    // Tab support in editor
-    codeEditor.addEventListener('keydown', function(e) {
-        if (e.key == 'Tab') {
-            e.preventDefault();
-            var start = this.selectionStart;
-            var end = this.selectionEnd;
-            this.value = this.value.substring(0, start) +
-                "    " + this.value.substring(end);
-            this.selectionStart =
-                this.selectionEnd = start + 4;
-        }
+    btnBackMap?.addEventListener('click', () => { switchView(viewMap); renderMap(); });
+    btnRun?.addEventListener('click', runPythonCode);
+    btnSignOut?.addEventListener('click', async () => {
+        sessionStorage.removeItem('pythonQuestUser');
+        await signOut(auth);
+        endSession();
     });
 }
 
-// Kickoff
-document.addEventListener('DOMContentLoaded', init);
+init();
