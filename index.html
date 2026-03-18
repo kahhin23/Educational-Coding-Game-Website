@@ -92,8 +92,11 @@
                     <i class="fa-brands fa-python"></i> Python Quest
                 </div>
                 <div class="user-progress">
+                    <button id="btn-back-courses" class="btn-icon" style="display: none; margin-bottom: 0; margin-right: 15px; font-size: 0.85rem;">
+                        <i class="fa-solid fa-arrow-left"></i> Courses
+                    </button>
                     <span class="level-badge">Lvl 1</span>
-                    XP: 0/100
+                    <span id="header-xp">XP: 0/100</span>
                     <button id="btn-signout" class="btn-signout" title="Sign Out">
                         <i class="fa-solid fa-right-from-bracket"></i>
                         <span>Sign Out</span>
@@ -101,15 +104,74 @@
                 </div>
             </header>
 
+            <!-- COURSE SELECTION VIEW -->
+            <main id="view-course-selection" class="view">
+                <div class="course-selection-container glass-panel">
+                    <div class="course-list-panel">
+                        <h2 class="panel-title">Your Path</h2>
+                        <div id="course-items" class="course-items">
+                            <!-- Injected via JS -->
+                        </div>
+                    </div>
+                    <div class="course-intro-panel">
+                        <div id="course-intro-content" class="intro-content">
+                            <div class="empty-selection">
+                                <i class="fa-solid fa-graduation-cap"></i>
+                                <h3>Select a course to begin</h3>
+                                <p>Each path offers a unique journey in the world of coding.</p>
+                            </div>
+                        </div>
+                        <div class="intro-actions" style="display: none;">
+                            <button id="btn-enter-course" class="btn-primary">Enter Course <i class="fa-solid fa-arrow-right"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
             <!-- View: Map (Stage Selection) -->
             <main id="view-map" class="view">
                 <div class="map-container glass-panel">
                     <h1 class="map-title">Select Stage</h1>
+                    
+                    <!-- Chapter Selector UI -->
+                    <div class="chapter-selector glass-panel">
+                        <button id="btn-prev-chapter" class="btn-chapter"><i class="fa-solid fa-chevron-left"></i></button>
+                        <div class="chapter-info">
+                            <span id="current-chapter-name">Chapter 1</span>
+                            <small id="chapter-range">Stages 1 - 20</small>
+                        </div>
+                        <button id="btn-next-chapter" class="btn-chapter"><i class="fa-solid fa-chevron-right"></i></button>
+                        
+                        <div class="jump-box">
+                            <input type="number" id="input-jump-stage" placeholder="Go to stage..." min="1" max="1000">
+                            <button id="btn-jump-stage" class="btn-primary-sm">Jump</button>
+                        </div>
+                    </div>
+
                     <div class="stage-nodes-wrapper" id="stage-nodes-wrapper">
                         <!-- Nodes injected via JS -->
                     </div>
                 </div>
             </main>
+
+            <!-- PAYMENT OVERLAY MODAL -->
+            <div id="payment-overlay" class="modal-overlay" style="display: none;">
+                <div class="payment-modal glass-panel">
+                    <div class="payment-header">
+                        <i class="fa-solid fa-lock-open color-primary"></i>
+                        <h2>Unlock Stage</h2>
+                    </div>
+                    <div class="payment-body">
+                        <p id="payment-stage-title">Stage 2: Storing Energy</p>
+                        <div class="price-tag">$1.99</div>
+                        <p class="payment-description">Access full learning content and coding challenges for this stage. One-time fee, lifetime access.</p>
+                    </div>
+                    <div class="payment-footer">
+                        <button id="btn-cancel-payment" class="btn-icon">Cancel</button>
+                        <button id="btn-pay-now" class="btn-primary">Pay Now <i class="fa-solid fa-credit-card"></i></button>
+                    </div>
+                </div>
+            </div>
 
             <!-- View: Stage -->
             <main id="view-stage" class="view">
@@ -166,8 +228,16 @@
     </div>
 
     <!-- Scripts -->
+    <!-- Firebase Core (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    
     <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
-    <script type="module" src="auth.js"></script>
-    <script type="module" src="app.js"></script>
+    
+    <!-- Load custom scripts in order -->
+    <script src="firebase-config.js"></script>
+    <script src="auth.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
