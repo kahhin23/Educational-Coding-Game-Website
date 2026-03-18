@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Python Quest</title>
+    <title>CodeQuest - Educational Coding Game</title>
     <!-- Google Fonts: Outfit -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,28 +23,7 @@
         <!-- View: Login -->
         <main id="view-login" class="view active-view">
             <div class="login-wrapper">
-                <!-- Branding / Left Side -->
-                <div class="brand-panel">
-                    <div class="brand-logo">
-                        <i class="fa-brands fa-python icon-spin"></i>
-                    </div>
-                    <h1 class="brand-title">Python Quest</h1>
-                    <p class="brand-tagline">Level up your Python skills,<br>one challenge at a time.</p>
-                    <div class="brand-features">
-                        <div class="feature-item">
-                            <i class="fa-solid fa-map"></i>
-                            <span>Interactive Stage Map</span>
-                        </div>
-                        <div class="feature-item">
-                            <i class="fa-solid fa-code"></i>
-                            <span>Live Python Console</span>
-                        </div>
-                        <div class="feature-item">
-                            <i class="fa-solid fa-trophy"></i>
-                            <span>Track Your Progress</span>
-                        </div>
-                    </div>
-                </div>
+                <!-- Auth Card -->
 
                 <!-- Auth Card / Right Side -->
                 <div class="auth-card glass-card">
@@ -88,18 +67,21 @@
         <div id="game-container" style="display: none;">
             <!-- Header -->
             <header class="glass-header">
-                <div class="logo">
-                    <i class="fa-brands fa-python"></i> Python Quest
-                </div>
-                <div class="user-progress">
-                    <button id="btn-back-courses" class="btn-icon" style="display: none; margin-bottom: 0; margin-right: 15px; font-size: 0.85rem;">
-                        <i class="fa-solid fa-arrow-left"></i> Courses
+                <div class="header-left">
+                    <button id="btn-back-courses" class="header-btn" title="Back to Courses" style="display: none;">
+                        <i class="fa-solid fa-arrow-left"></i>
                     </button>
-                    <span class="level-badge">Lvl 1</span>
-                    <span id="header-xp">XP: 0/100</span>
-                    <button id="btn-signout" class="btn-signout" title="Sign Out">
+                    <div class="logo">
+                        <i class="fa-solid fa-code"></i> CodeQuest
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div id="header-xp-info" class="header-xp-info">
+                        <span class="level-badge">Lvl 1</span>
+                        <span id="header-xp">XP: 0/100</span>
+                    </div>
+                    <button id="btn-signout" class="header-btn btn-danger-hover" title="Sign Out">
                         <i class="fa-solid fa-right-from-bracket"></i>
-                        <span>Sign Out</span>
                     </button>
                 </div>
             </header>

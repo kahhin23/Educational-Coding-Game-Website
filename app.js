@@ -1,4 +1,4 @@
-(function() {
+(function () {
     // app.js
     // Accessing globals from firebase-config.js and auth.js
     const { auth, db } = window.firebaseAuth;
@@ -148,6 +148,7 @@
     const mcqQuestionEl = document.getElementById('mcq-question');
     const mcqOptionsEl = document.getElementById('mcq-options');
     const mcqFeedbackEl = document.getElementById('mcq-feedback');
+    const headerXpInfo = document.getElementById('header-xp-info');
 
     // Python Editor
     const codeEditor = document.getElementById('code-editor');
@@ -162,7 +163,7 @@
 
         // Setup Auth
         setupAuthListener(startSession, endSession);
-        
+
         // Listen for Guest login
         window.addEventListener('guest-login', (e) => startSession(e.detail, true));
     }
@@ -170,19 +171,19 @@
     async function startSession(user, guestMode = false) {
         currentUser = user;
         isGuest = guestMode;
-        
+
         // Logic: Hide login, show game
         viewLogin.classList.remove('active-view');
         viewLogin.style.display = 'none';
         gameContainer.style.display = 'block';
-        
+
         // Fetch persistence if not guest
         if (!isGuest) {
             await fetchProgress();
         }
-        
+
         clearAuthStatus();
-        
+
         // Land on Course Selection
         renderCourseSelection();
         switchView(viewCourseSelection);
@@ -191,18 +192,18 @@
     function endSession() {
         currentUser = null;
         isGuest = false;
-        
+
         // Reset Progress in memory
         resetCourseData();
-        
+
         // Reset UI
         gameContainer.style.display = 'none';
         viewLogin.style.display = 'flex';
         viewLogin.classList.add('active-view');
-        
+
         // Reset Header UI
         document.querySelector('.level-badge').textContent = 'Lvl 1';
-        document.querySelector('.user-progress').childNodes[1].textContent = 'XP: 0/100';
+        document.getElementById('header-xp').textContent = 'XP: 0/100';
 
         clearAuthStatus();
     }
@@ -234,14 +235,14 @@
                 // Unlock next stage logic
                 for (let i = 0; i < courseData.stages.length - 1; i++) {
                     if (courseData.stages[i].completed) {
-                        courseData.stages[i+1].locked = false;
+                        courseData.stages[i + 1].locked = false;
                         // stage[i+1].paid remains false if it wasn't already paid/completed
                     }
                 }
-                
+
                 // Update XP/Level UI
                 document.querySelector('.level-badge').textContent = `Lvl ${data.level || 1}`;
-                document.querySelector('.user-progress').childNodes[1].textContent = `XP: ${data.xp || 0}/100`;
+                document.getElementById('header-xp').textContent = `XP: ${data.xp || 0}/100`;
             }
         } catch (err) {
             console.error("Error fetching progress:", err);
@@ -276,7 +277,7 @@
 
             // Update UI
             document.querySelector('.level-badge').textContent = `Lvl ${currentLevel}`;
-            document.querySelector('.user-progress').childNodes[1].textContent = `XP: ${currentXP}/100`;
+            document.getElementById('header-xp').textContent = `XP: ${currentXP}/100`;
         } catch (err) {
             console.error("Error saving progress:", err);
         }
@@ -344,11 +345,12 @@
 
     function enterCourse() {
         if (!selectedCourseId) return;
-        
-        const course = courseList[selectedCourseId];
-        btnBackCourses.style.display = 'flex';
 
+        const course = courseList[selectedCourseId];
+        
         if (course.entryPath === 'map') {
+            btnBackCourses.style.display = 'flex';
+
             // Python: Go to stage map
             // Find chapter for current progress
             const firstIncompleteIdx = courseData.stages.findIndex(s => !s.completed);
@@ -357,8 +359,6 @@
             switchView(viewMap);
         } else {
             // Others: Go direct to a placeholder stage or editor
-            // For now, let's just open a generic stage-like view
-            showFeedback(document.getElementById('editor-feedback'), `${course.title} initialized. No stages required.`, 'success');
             openDirectCourse(course);
         }
     }
@@ -366,7 +366,10 @@
     function openDirectCourse(course) {
         // Simple direct entry simulation
         currentStageId = 'direct-entry';
-        stageTitleEl.textContent = course.title + ' Dashboard';
+        btnBackCourses.style.display = 'flex';
+        btnBackMap.style.display = 'none'; // Hide "Back to Map" in direct mode
+
+        stageTitleEl.textContent = course.title;
         learningContentEl.innerHTML = `<h3>Welcome to ${course.title}</h3><p>You have entered the direct access path. No stage levels are required for this course.</p>`;
         mcqQuestionEl.textContent = 'Ready to code?';
         mcqOptionsEl.innerHTML = '<div class="mcq-option">Yes, let\'s go!</div>';
@@ -374,13 +377,19 @@
         expectedOutputTextEl.textContent = 'Success';
         codeEditor.value = `// Welcome to ${course.title}`;
         consoleOutput.textContent = '';
+        
         switchView(viewStage);
         setMode('learn');
+        
+        // Show success feedback in the stage editor
+        setTimeout(() => {
+            showFeedback(editorFeedbackEl, `${course.title} mode active.`, 'success');
+        }, 500);
     }
     function renderMap() {
         stageNodesWrapper.innerHTML = '';
         const fragment = document.createDocumentFragment();
-        
+
         // Calculate stage range for current chapter
         const startIndex = (currentChapter - 1) * STAGES_PER_CHAPTER;
         const endIndex = Math.min(startIndex + STAGES_PER_CHAPTER, courseData.stages.length);
@@ -401,7 +410,10 @@
             node.setAttribute('id', `node-${stage.id}`);
             node.textContent = stage.id.split('-')[1]; // Show stage number
             node.addEventListener('click', () => {
-                if (!stage.locked) openStage(stage.id);
+                if (!stage.locked) {
+                    btnBackMap.style.display = 'flex'; // Ensure Map back button shows
+                    openStage(stage.id);
+                }
             });
             fragment.appendChild(node);
         });
@@ -425,7 +437,7 @@
         }
         currentChapter = Math.ceil(stageNum / STAGES_PER_CHAPTER);
         renderMap();
-        
+
         // Highlight the node briefly
         setTimeout(() => {
             const node = document.getElementById(`node-stage-${stageNum}`);
@@ -437,27 +449,45 @@
     }
 
     function openStage(stageId) {
-        currentStageId = stageId;
-        const stageData = courseData.stages.find(s => s.id === stageId);
-        
-        // Payment Check
-        if (!stageData.paid) {
-            showPaymentOverlay(stageData);
-            return;
-        }
+        try {
+            currentStageId = stageId;
+            const stageData = courseData.stages.find(s => s.id === stageId);
+            if (!stageData) {
+                console.error("Stage data not found for id:", stageId);
+                return;
+            }
 
-        stageTitleEl.textContent = stageData.title;
-        learningContentEl.innerHTML = stageData.learningContent;
-        mcqQuestionEl.textContent = stageData.mcq.question;
-        renderMCQOptions(stageData.mcq);
-        hideFeedback(mcqFeedbackEl);
-        codingPromptEl.innerHTML = stageData.codingChallenge.prompt;
-        expectedOutputTextEl.textContent = stageData.codingChallenge.expectedOutput;
-        codeEditor.value = '';
-        consoleOutput.textContent = '';
-        hideFeedback(editorFeedbackEl);
-        switchView(viewStage);
-        setMode('learn');
+            // Payment Check
+            if (!stageData.paid) {
+                showPaymentOverlay(stageData);
+                return;
+            }
+
+            stageTitleEl.textContent = stageData.title;
+            learningContentEl.innerHTML = stageData.learningContent || '<p>No content available.</p>';
+            
+            if (stageData.mcq) {
+                mcqQuestionEl.textContent = stageData.mcq.question;
+                renderMCQOptions(stageData.mcq);
+            }
+            
+            hideFeedback(mcqFeedbackEl);
+            
+            if (stageData.codingChallenge) {
+                codingPromptEl.innerHTML = stageData.codingChallenge.prompt;
+                expectedOutputTextEl.textContent = stageData.codingChallenge.expectedOutput;
+            }
+            
+            codeEditor.value = '';
+            consoleOutput.textContent = '';
+            hideFeedback(editorFeedbackEl);
+            
+            switchView(viewStage);
+            setMode('learn');
+        } catch (err) {
+            console.error("Error opening stage:", err);
+            showFeedback(editorFeedbackEl, "Failed to load stage.", "error");
+        }
     }
 
     function showPaymentOverlay(stageData) {
@@ -508,8 +538,9 @@
         const stageData = courseData.stages.find(s => s.id === currentStageId);
         const expectedOutput = stageData.codingChallenge.expectedOutput;
         consoleOutput.textContent = '';
+        consoleOutput.classList.remove('error-text');
         let output = '';
-        pyodideInstance.setStdout({ batched: (str) => { output += str + '\n'; consoleOutput.textContent += str + '\n'; }});
+        pyodideInstance.setStdout({ batched: (str) => { output += str + '\n'; consoleOutput.textContent += str + '\n'; } });
         try {
             await pyodideInstance.runPythonAsync(code);
             if (output === expectedOutput) {
@@ -521,7 +552,8 @@
                 showFeedback(editorFeedbackEl, 'Output does not match.', 'error');
             }
         } catch (err) {
-            consoleOutput.textContent += err.toString();
+            consoleOutput.textContent = 'Please Try Again';
+            consoleOutput.classList.add('error-text');
             showFeedback(editorFeedbackEl, 'Error', 'error');
         }
     }
@@ -530,7 +562,7 @@
         const idx = courseData.stages.findIndex(s => s.id === stageId);
         if (idx > -1) {
             courseData.stages[idx].completed = true;
-            if (idx + 1 < courseData.stages.length) courseData.stages[idx+1].locked = false;
+            if (idx + 1 < courseData.stages.length) courseData.stages[idx + 1].locked = false;
         }
     }
 

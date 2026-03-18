@@ -110,6 +110,13 @@ body {
     background: rgba(10, 10, 15, 0.6);
     backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--border);
+    z-index: 1000;
+}
+
+.header-left, .header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
 }
 
 .logo {
@@ -126,7 +133,41 @@ body {
     align-items: center;
     gap: 15px;
     font-size: 0.9rem;
+}
+
+.header-xp-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
     color: var(--text-muted);
+}
+
+.header-btn {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    color: var(--text-main);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 1.1rem;
+}
+
+.header-btn:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(79, 70, 229, 0.3);
+}
+
+.header-btn.btn-danger-hover:hover {
+    background: var(--danger);
+    border-color: var(--danger);
+    box-shadow: 0 5px 15px rgba(239, 68, 68, 0.3);
 }
 
 .level-badge {
@@ -137,26 +178,7 @@ body {
     font-weight: 600;
 }
 
-.btn-signout {
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text-muted);
-    padding: 5px 14px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-family: 'Outfit', sans-serif;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    transition: all 0.2s ease;
-    margin-left: 8px;
-}
-.btn-signout:hover {
-    background: rgba(239, 68, 68, 0.1);
-    border-color: var(--danger);
-    color: var(--danger);
-}
+/* Header buttons shared style above */
 
 /* -------- LOGIN VIEW -------- */
 #view-login {
@@ -170,11 +192,10 @@ body {
 
 .login-wrapper {
     position: relative;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-direction: column;
     width: 100%;
-    max-width: 1000px;
-    min-height: 600px;
+    max-width: 480px;
     background: rgba(10, 10, 15, 0.4);
     backdrop-filter: blur(20px);
     border-radius: 28px;
@@ -184,45 +205,7 @@ body {
     z-index: 10;
 }
 
-.brand-panel {
-    background: linear-gradient(145deg, rgba(79, 70, 229, 0.2), rgba(139, 92, 246, 0.15));
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    padding: 60px 50px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 20px;
-    border-right: 1px solid var(--border);
-}
-
-.brand-logo { font-size: 4rem; color: #a5b4fc; }
-.icon-spin { animation: pulse-glow 3s ease-in-out infinite; }
-@keyframes pulse-glow {
-    0%, 100% { text-shadow: 0 0 20px rgba(165, 180, 252, 0.4); }
-    50% { text-shadow: 0 0 40px rgba(165, 180, 252, 0.9), 0 0 80px rgba(79, 70, 229, 0.5); }
-}
-
-.brand-title {
-    font-size: 2.8rem;
-    font-weight: 700;
-    background: linear-gradient(to right, #fff, #a5b4fc);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-.brand-tagline { color: var(--text-muted); line-height: 1.6; }
-.brand-features { display: flex; flex-direction: column; gap: 16px; margin-top: 20px; }
-.feature-item { display: flex; align-items: center; gap: 14px; color: var(--text-muted); }
-.feature-item i {
-    width: 36px; height: 36px;
-    background: rgba(79, 70, 229, 0.2);
-    border: 1px solid rgba(79, 70, 229, 0.4);
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    color: #a5b4fc;
-}
+/* Brand panel removed in favor of centered login */
 
 .glass-card {
     background: rgba(10, 10, 15, 0.7);
