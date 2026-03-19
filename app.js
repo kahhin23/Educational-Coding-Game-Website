@@ -49,7 +49,7 @@
     };
 
     // AI Backend URL
-    const AI_API_URL = 'https://gacha-girla.co:8080/api/deepseek/chat';
+    const AI_API_URL = 'https://188.166.229.212:8080/api/deepseek/chat';
 
     // CSV Parser Utility
     function parseCSV(text) {
@@ -62,7 +62,7 @@
             let inQuotes = false;
             for (let i = 0; i < line.length; i++) {
                 const char = line[i];
-                if (char === '"' && line[i+1] === '"') {
+                if (char === '"' && line[i + 1] === '"') {
                     current += '"';
                     i++;
                 } else if (char === '"') {
@@ -75,7 +75,7 @@
                 }
             }
             values.push(current.trim());
-            
+
             const obj = {};
             headers.forEach((header, i) => {
                 obj[header.trim()] = values[i] ? values[i].replace(/\\n/g, '\n') : '';
@@ -91,7 +91,7 @@
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const csvText = await response.text();
             const rawData = parseCSV(csvText);
-            
+
             // Group rows by ID to consolidate multi-part stages
             const stageGroups = {};
             const orderedIds = [];
@@ -99,7 +99,7 @@
                 const clean = (val) => (val === '-' || !val) ? '' : val;
                 const idStr = clean(row.ID);
                 if (!idStr) return;
-                
+
                 if (!stageGroups[idStr]) {
                     stageGroups[idStr] = {
                         id: `stage-${idStr}`,
@@ -110,7 +110,7 @@
                     };
                     orderedIds.push(idStr);
                 }
-                
+
                 const type = clean(row.Type);
                 if (type === 'reading material') {
                     stageGroups[idStr].title = clean(row.Title) || stageGroups[idStr].title;
@@ -143,7 +143,7 @@
                 completed: false,
                 paid: index === 0 ? true : false
             }));
-            
+
             console.log("Grouped Course data loaded:", courseData.stages);
         } catch (err) {
             console.error("Failed to load course data:", err);
@@ -213,7 +213,7 @@
         initEventListeners();
         await initPyodide();
         await loadCourseData();
-        
+
         // AI Backend Test
         await testAIBackend();
 
@@ -403,7 +403,7 @@
         if (!selectedCourseId) return;
 
         const course = courseList[selectedCourseId];
-        
+
         if (course.entryPath === 'map') {
             btnBackCourses.style.display = 'flex';
 
@@ -433,10 +433,10 @@
         expectedOutputTextEl.textContent = 'Success';
         codeEditor.value = `// Welcome to ${course.title}`;
         consoleOutput.textContent = '';
-        
+
         switchView(viewStage);
         setMode('learn');
-        
+
         // Show success feedback in the stage editor
         setTimeout(() => {
             showFeedback(editorFeedbackEl, `${course.title} mode active.`, 'success');
@@ -532,7 +532,7 @@
 
             stageTitleEl.textContent = stageData.title;
             learningContentEl.innerHTML = stageData.learningContent || '<p>No content available.</p>';
-            
+
             if (stageData.codingChallenge) {
                 codingPromptEl.innerHTML = stageData.codingChallenge.prompt;
                 expectedOutputTextEl.textContent = stageData.codingChallenge.expectedOutput;
@@ -576,7 +576,7 @@
                 mcqOptionsEl.appendChild(btn);
                 setMode('learn');
             }
-            
+
             switchView(viewStage);
         } catch (err) {
             console.error("Error opening stage:", err);
@@ -622,7 +622,7 @@
         if (selectedIndex === correctIndex) {
             optionElement.classList.add('correct');
             showFeedback(mcqFeedbackEl, 'Correct! Concept verified.', 'success');
-            
+
             const stageData = courseData.stages.find(s => s.id === currentStageId);
             if (stageData && stageData.codingChallenge) {
                 setTimeout(() => setMode('code'), 1000);
@@ -641,15 +641,15 @@
         const code = codeEditor.value.trim();
         const stageData = courseData.stages.find(s => s.id === currentStageId);
         const challenge = stageData.codingChallenge;
-        
+
         consoleOutput.textContent = '';
         consoleOutput.classList.remove('error-text');
         let output = '';
         pyodideInstance.setStdout({ batched: (str) => { output += str + '\n'; consoleOutput.textContent += str + '\n'; } });
-        
+
         try {
             await pyodideInstance.runPythonAsync(code);
-            
+
             const trimmedOutput = output.trim();
             const expected = challenge.expectedOutput ? challenge.expectedOutput.trim() : '';
             const exact = challenge.exactInput ? challenge.exactInput.trim() : '';
@@ -705,7 +705,7 @@
         });
         target.classList.add('active-view');
         target.style.display = 'flex'; // Explicitly show
-        
+
         // Always hide payment overlay when switching main views
         hidePaymentOverlay();
     }
@@ -756,23 +756,23 @@
     async function testAIBackend() {
         console.log("--- AI Backend Test (Processing Index Page) ---");
         console.log("Requesting from:", AI_API_URL);
-        
+
         try {
             // Typical chat API body structure. Adjust if the backend expects something different.
             const testPayload = {
                 messages: [{ role: 'user', content: 'Testing AI connection. Say "Ready".' }]
             };
-            
+
             console.log("Payload:", JSON.stringify(testPayload));
-            
+
             const response = await fetch(AI_API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(testPayload)
             });
-            
+
             console.log("AI API status:", response.status);
-            
+
             if (response.ok) {
                 const data = await response.json();
                 console.log("AI Response Success:", data);
