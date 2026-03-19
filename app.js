@@ -5,6 +5,7 @@
     const { setupAuthListener, clearAuthStatus } = window.authApp;
 
     // --- Global State ---
+    const CSV_URL = 'https://raw.githubusercontent.com/kahhin23/Educational-Coding-Game-Website/main/python%20course%20data.csv';
     let pyodideInstance = null;
     let currentStageId = null;
     let currentMode = 'learn';
@@ -42,69 +43,120 @@
         }
     };
 
-    // --- Course Data (Programmatically Generated) ---
+    // --- Course Data ---
     const courseData = {
         stages: []
     };
 
-    // Programmatically generate 1000 stages
-    function generateStages(count = 1000) {
-        const tutorialStages = [
-            {
-                id: 'stage-1',
-                title: '1. The Awakening',
-                locked: false,
-                learningContent: `
-                    <p>Welcome to <strong>Python Quest</strong>. In this world, you control the elements using a powerful language.</p>
-                    <p>To begin your journey, you must first prove you can speak to the console.</p>
-                    <p>The standard way to make the console speak is by using the <span class="inline-code">print()</span> function.</p>
-                    <p>For example: <span class="inline-code">print("I am alive!")</span></p>
-                `,
-                mcq: {
-                    question: 'Which of the following is the correct way to make the console say "Hello"?',
-                    options: ['console.log("Hello")', 'print("Hello")', 'say Hello', 'echo "Hello"'],
-                    correctIndex: 1
-                },
-                codingChallenge: {
-                    prompt: 'Write a Python program that prints exactly: <strong>Hello World</strong>',
-                    expectedOutput: 'Hello World\n'
-                },
-                paid: true // Stage 1 is free
-            },
-            {
-                id: 'stage-2',
-                title: '2. Storing Energy',
-                locked: true,
-                paid: false,
-                learningContent: '<p>You have learned to speak. Now you must learn to remember variables...</p><p>Variables are used to store calculations or values. For example: <span class="inline-code">x = 5</span></p>',
-                mcq: { question: 'How do you assign the value 10 to a variable named energy?', options: ['energy := 10', 'energy = 10', 'set energy to 10'], correctIndex: 1 },
-                codingChallenge: { prompt: 'Create a variable named <strong>power</strong> and set it to <strong>9000</strong>, then print it.', expectedOutput: '9000\n' }
+    // AI Backend URL
+    const AI_API_URL = 'http://gacha-girla.co:8080/api/deepseek/chat';
+
+    // CSV Parser Utility
+    function parseCSV(text) {
+        const lines = text.trim().split('\n');
+        const headers = lines[0].split(',');
+        return lines.slice(1).map(line => {
+            // Handle quoted commas in CSV
+            const values = [];
+            let current = '';
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"' && line[i+1] === '"') {
+                    current += '"';
+                    i++;
+                } else if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    values.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
             }
-        ];
+            values.push(current.trim());
+            
+            const obj = {};
+            headers.forEach((header, i) => {
+                obj[header.trim()] = values[i] ? values[i].replace(/\\n/g, '\n') : '';
+            });
+            return obj;
+        });
+    }
 
-        courseData.stages = [...tutorialStages];
-
-        for (let i = courseData.stages.length + 1; i <= count; i++) {
-            courseData.stages.push({
-                id: `stage-${i}`,
-                title: `${i}. Quest of Knowledge`,
-                locked: true,
-                paid: false, // Default to unpaid
-                learningContent: `<p>You have reached stage ${i}. Continue your journey through the Python realm to unlock deeper secrets of the craft.</p>`,
-                mcq: {
-                    question: `A quick check for Stage ${i}: How do you output text?`,
-                    options: ['print("Hello")', 'echo "Hello"', 'say "Hello"'],
-                    correctIndex: 0
-                },
-                codingChallenge: {
-                    prompt: `Print the number <strong>${i}</strong> to complete this stage.`,
-                    expectedOutput: `${i}\n`
+    async function loadCourseData() {
+        try {
+            console.log("Fetching course data from:", CSV_URL);
+            const response = await fetch(CSV_URL);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const csvText = await response.text();
+            const rawData = parseCSV(csvText);
+            
+            // Group rows by ID to consolidate multi-part stages
+            const stageGroups = {};
+            const orderedIds = [];
+            rawData.forEach(row => {
+                const clean = (val) => (val === '-' || !val) ? '' : val;
+                const idStr = clean(row.ID);
+                if (!idStr) return;
+                
+                if (!stageGroups[idStr]) {
+                    stageGroups[idStr] = {
+                        id: `stage-${idStr}`,
+                        title: '',
+                        learningContent: '',
+                        mcq: null,
+                        codingChallenge: null
+                    };
+                    orderedIds.push(idStr);
+                }
+                
+                const type = clean(row.Type);
+                if (type === 'reading material') {
+                    stageGroups[idStr].title = clean(row.Title) || stageGroups[idStr].title;
+                    stageGroups[idStr].learningContent = clean(row.Question);
+                } else if (type === 'mc') {
+                    stageGroups[idStr].title = stageGroups[idStr].title || clean(row.Title);
+                    stageGroups[idStr].mcq = {
+                        question: clean(row.Question),
+                        options: clean(row.Option).split(';').map(o => o.trim()),
+                        correctIndex: parseInt(clean(row['Answer Index']))
+                    };
+                } else if (type === 'coding') {
+                    stageGroups[idStr].title = stageGroups[idStr].title || clean(row.Title);
+                    stageGroups[idStr].codingChallenge = {
+                        prompt: clean(row.Question),
+                        preCode: clean(row['Pre-Code']),
+                        exactInput: clean(row['Exact Input']),
+                        expectedOutput: clean(row['Expected Output']) ? clean(row['Expected Output']).replace(/\\n/g, '\n') : ''
+                    };
+                    if (stageGroups[idStr].codingChallenge.expectedOutput && !stageGroups[idStr].codingChallenge.expectedOutput.endsWith('\n')) {
+                        stageGroups[idStr].codingChallenge.expectedOutput += '\n'; // standard print line suffix
+                    }
                 }
             });
+
+            // Convert to ordered array and set status
+            courseData.stages = orderedIds.map((id, index) => ({
+                ...stageGroups[id],
+                locked: index === 0 ? false : true,
+                completed: false,
+                paid: index === 0 ? true : false
+            }));
+            
+            console.log("Grouped Course data loaded:", courseData.stages);
+        } catch (err) {
+            console.error("Failed to load course data:", err);
+            // Fallback
+            courseData.stages = [{
+                id: 'stage-1-1',
+                title: 'Error Loading Data',
+                learningContent: '<p>Could not load course data accurately. Please check your GitHub link.</p>',
+                locked: false,
+                paid: true
+            }];
         }
     }
-    // Generate stages immediately
-    generateStages(1000);
 
     // --- DOM Elements ---
     const viewLogin = document.getElementById('view-login');
@@ -160,6 +212,10 @@
     async function init() {
         initEventListeners();
         await initPyodide();
+        await loadCourseData();
+        
+        // AI Backend Test
+        await testAIBackend();
 
         // Setup Auth
         setupAuthListener(startSession, endSession);
@@ -408,7 +464,7 @@
             node.className = `stage-node ${stage.locked ? 'locked' : ''} ${stage.completed ? 'completed' : ''} ${isUnpaid ? 'unpaid' : ''}`;
             node.setAttribute('data-title', stage.title);
             node.setAttribute('id', `node-${stage.id}`);
-            node.textContent = stage.id.split('-')[1]; // Show stage number
+            node.textContent = stage.id.replace('stage-', ''); // Show stage ID (e.g. 1-1)
             node.addEventListener('click', () => {
                 if (!stage.locked) {
                     btnBackMap.style.display = 'flex'; // Ensure Map back button shows
@@ -450,6 +506,7 @@
 
     function openStage(stageId) {
         try {
+            console.log("Opening stage:", stageId);
             currentStageId = stageId;
             const stageData = courseData.stages.find(s => s.id === stageId);
             if (!stageData) {
@@ -457,8 +514,18 @@
                 return;
             }
 
+            // Defensive: Reset stage view content before switching or returning
+            stageTitleEl.textContent = 'Loading...';
+            learningContentEl.innerHTML = '';
+            mcqOptionsEl.innerHTML = '';
+            hideFeedback(mcqFeedbackEl);
+            hideFeedback(editorFeedbackEl);
+            codeEditor.value = '';
+            consoleOutput.textContent = '';
+
             // Payment Check
             if (!stageData.paid) {
+                console.log("Stage is unpaid, showing overlay:", stageId);
                 showPaymentOverlay(stageData);
                 return;
             }
@@ -466,24 +533,51 @@
             stageTitleEl.textContent = stageData.title;
             learningContentEl.innerHTML = stageData.learningContent || '<p>No content available.</p>';
             
-            if (stageData.mcq) {
-                mcqQuestionEl.textContent = stageData.mcq.question;
-                renderMCQOptions(stageData.mcq);
-            }
-            
-            hideFeedback(mcqFeedbackEl);
-            
             if (stageData.codingChallenge) {
                 codingPromptEl.innerHTML = stageData.codingChallenge.prompt;
                 expectedOutputTextEl.textContent = stageData.codingChallenge.expectedOutput;
+                codeEditor.value = stageData.codingChallenge.preCode || '';
+            }
+
+            // Determine interaction mode
+            if (stageData.mcq) {
+                // MCQ exists (could follow reading content)
+                mcqQuestionEl.textContent = stageData.mcq.question;
+                renderMCQOptions(stageData.mcq);
+                setMode('learn');
+            } else if (stageData.codingChallenge) {
+                // No MCQ, but coding exists. Show transition button if there was reading content.
+                if (stageData.learningContent) {
+                    mcqQuestionEl.textContent = 'Ready for the Challenge?';
+                    const btn = document.createElement('button');
+                    btn.className = 'btn-primary';
+                    btn.style.width = '100%';
+                    btn.innerHTML = 'Start Coding Challenge <i class="fa-solid fa-code"></i>';
+                    btn.onclick = () => setMode('code');
+                    mcqOptionsEl.appendChild(btn);
+                    setMode('learn');
+                } else {
+                    // Coding only: go direct to CODE mode
+                    setMode('code');
+                }
+            } else {
+                // Reading Only stage
+                mcqQuestionEl.textContent = 'Learning Material';
+                const btn = document.createElement('button');
+                btn.className = 'btn-primary';
+                btn.style.width = '100%';
+                btn.innerHTML = 'Complete Reading <i class="fa-solid fa-check"></i>';
+                btn.onclick = async () => {
+                    showFeedback(mcqFeedbackEl, 'Well done! Reading complete.', 'success');
+                    markStageCompleted(currentStageId);
+                    await saveProgress(currentStageId);
+                    setTimeout(() => { switchView(viewMap); renderMap(); }, 1000);
+                };
+                mcqOptionsEl.appendChild(btn);
+                setMode('learn');
             }
             
-            codeEditor.value = '';
-            consoleOutput.textContent = '';
-            hideFeedback(editorFeedbackEl);
-            
             switchView(viewStage);
-            setMode('learn');
         } catch (err) {
             console.error("Error opening stage:", err);
             showFeedback(editorFeedbackEl, "Failed to load stage.", "error");
@@ -491,11 +585,13 @@
     }
 
     function showPaymentOverlay(stageData) {
+        console.log("Showing payment overlay for:", stageData.id);
         paymentStageTitle.textContent = stageData.title;
         paymentOverlay.style.display = 'flex';
     }
 
     function hidePaymentOverlay() {
+        console.log("Hiding payment overlay");
         paymentOverlay.style.display = 'none';
     }
 
@@ -522,11 +618,19 @@
         });
     }
 
-    function handleMCQAnswer(selectedIndex, correctIndex, optionElement) {
+    async function handleMCQAnswer(selectedIndex, correctIndex, optionElement) {
         if (selectedIndex === correctIndex) {
             optionElement.classList.add('correct');
             showFeedback(mcqFeedbackEl, 'Correct! Concept verified.', 'success');
-            setTimeout(() => setMode('code'), 1000);
+            
+            const stageData = courseData.stages.find(s => s.id === currentStageId);
+            if (stageData && stageData.codingChallenge) {
+                setTimeout(() => setMode('code'), 1000);
+            } else {
+                markStageCompleted(currentStageId);
+                await saveProgress(currentStageId);
+                setTimeout(() => { switchView(viewMap); renderMap(); }, 1500);
+            }
         } else {
             optionElement.classList.add('incorrect');
             showFeedback(mcqFeedbackEl, 'Incorrect. Review the content.', 'error');
@@ -534,27 +638,54 @@
     }
 
     async function runPythonCode() {
-        const code = codeEditor.value;
+        const code = codeEditor.value.trim();
         const stageData = courseData.stages.find(s => s.id === currentStageId);
-        const expectedOutput = stageData.codingChallenge.expectedOutput;
+        const challenge = stageData.codingChallenge;
+        
         consoleOutput.textContent = '';
         consoleOutput.classList.remove('error-text');
         let output = '';
         pyodideInstance.setStdout({ batched: (str) => { output += str + '\n'; consoleOutput.textContent += str + '\n'; } });
+        
         try {
             await pyodideInstance.runPythonAsync(code);
-            if (output === expectedOutput) {
-                showFeedback(editorFeedbackEl, 'Success! Stage completed.', 'success');
+            
+            const trimmedOutput = output.trim();
+            const expected = challenge.expectedOutput ? challenge.expectedOutput.trim() : '';
+            const exact = challenge.exactInput ? challenge.exactInput.trim() : '';
+            const preCode = challenge.preCode ? challenge.preCode.trim() : '';
+
+            let isCorrect = true;
+            let feedback = 'Success! Stage completed.';
+
+            // Check Output (if expected output is defined)
+            if (expected && trimmedOutput !== expected) {
+                isCorrect = false;
+                feedback = 'Output does not match expected result.';
+            }
+
+            // Check Exact Input (Filtering Pre-Code)
+            if (exact) {
+                // Subtract the pre-populated code to check only what the user added/modified
+                const userAddedCode = code.replace(preCode, '').trim();
+                if (userAddedCode !== exact) {
+                    isCorrect = false;
+                    feedback = 'Code does not match exact required input.';
+                }
+            }
+
+            if (isCorrect) {
+                showFeedback(editorFeedbackEl, feedback, 'success');
                 markStageCompleted(currentStageId);
                 await saveProgress(currentStageId);
                 setTimeout(() => { switchView(viewMap); renderMap(); }, 1500);
             } else {
-                showFeedback(editorFeedbackEl, 'Output does not match.', 'error');
+                showFeedback(editorFeedbackEl, feedback, 'error');
             }
         } catch (err) {
-            consoleOutput.textContent = 'Please Try Again';
+            consoleOutput.textContent = err.message;
             consoleOutput.classList.add('error-text');
-            showFeedback(editorFeedbackEl, 'Error', 'error');
+            showFeedback(editorFeedbackEl, 'Execution Error', 'error');
         }
     }
 
@@ -567,8 +698,16 @@
     }
 
     function switchView(target) {
-        document.querySelectorAll('.view').forEach(v => v.classList.remove('active-view'));
+        console.log("Switching view to:", target.id);
+        document.querySelectorAll('.view').forEach(v => {
+            v.classList.remove('active-view');
+            v.style.display = 'none'; // Explicitly hide
+        });
         target.classList.add('active-view');
+        target.style.display = 'flex'; // Explicitly show
+        
+        // Always hide payment overlay when switching main views
+        hidePaymentOverlay();
     }
 
     function setMode(mode) {
@@ -612,6 +751,39 @@
         // Payment
         btnPayNow?.addEventListener('click', processPayment);
         btnCancelPayment?.addEventListener('click', hidePaymentOverlay);
+    }
+
+    async function testAIBackend() {
+        console.log("--- AI Backend Test (Processing Index Page) ---");
+        console.log("Requesting from:", AI_API_URL);
+        
+        try {
+            // Typical chat API body structure. Adjust if the backend expects something different.
+            const testPayload = {
+                messages: [{ role: 'user', content: 'Testing AI connection. Say "Ready".' }]
+            };
+            
+            console.log("Payload:", JSON.stringify(testPayload));
+            
+            const response = await fetch(AI_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(testPayload)
+            });
+            
+            console.log("AI API status:", response.status);
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log("AI Response Success:", data);
+            } else {
+                const error = await response.text();
+                console.warn("AI API Non-OK Response:", error);
+            }
+        } catch (err) {
+            console.error("AI Backend Connection Error (Check if server is accessible and CORS is enabled):", err);
+        }
+        console.log("--- AI Backend Test End ---");
     }
 
     init();
