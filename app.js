@@ -760,11 +760,18 @@
 
         try {
             // STEP 1: LOGIN (Get Token)
-            console.log("Step 1: Logging in to get token...");
+            console.log("Step 1: Logging in to get token (trying bypass)...");
+            
+            // Using URLSearchParams creates a "Simple Request" (application/x-www-form-urlencoded)
+            // which bypasses the preflight check for the 'Content-Type' header.
+            const loginBody = new URLSearchParams();
+            loginBody.append('username', 'admin');
+            loginBody.append('password', 'hiddenboss123');
+
             const loginRes = await fetch(AI_LOGIN_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: 'admin', password: 'hiddenboss123' })
+                // No headers: { 'Content-Type': 'application/json' } here!
+                body: loginBody
             });
 
             if (!loginRes.ok) {
