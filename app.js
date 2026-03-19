@@ -48,8 +48,10 @@
         stages: []
     };
 
-    // AI Backend URL
-    const AI_API_URL = 'http://188.166.229.212:8080/api/deepseek/chat';
+    // AI Backend URLs
+    const AI_BASE_URL = 'http://188.166.229.212:8080';
+    const AI_LOGIN_URL = `${AI_BASE_URL}/api/program/login`;
+    const AI_CHAT_URL = `${AI_BASE_URL}/api/program/chat`;
 
     // CSV Parser Utility
     function parseCSV(text) {
@@ -754,36 +756,50 @@
     }
 
     async function testAIBackend() {
-        console.log("--- AI Backend Test (Processing Index Page) ---");
-        console.log("Requesting from:", AI_API_URL);
-
+        console.log("--- AI Multi-Step Test Start (Processing Index Page) ---");
+        
         try {
-            // Typical chat API body structure. Adjust if the backend expects something different.
-            const testPayload = {
-                messages: [{ role: 'user', content: 'Testing AI connection. Say "Ready".' }]
-            };
-
-            console.log("Payload:", JSON.stringify(testPayload));
-
-            const response = await fetch(AI_API_URL, {
+            // STEP 1: LOGIN (Get Token)
+            console.log("Step 1: Logging in to get token...");
+            const loginRes = await fetch(AI_LOGIN_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(testPayload)
+                body: JSON.stringify({ username: 'admin', password: 'hiddenboss123' })
             });
-
-            console.log("AI API status:", response.status);
-
-            if (response.ok) {
-                const data = await response.json();
-                console.log("AI Response Success:", data);
-            } else {
-                const error = await response.text();
-                console.warn("AI API Non-OK Response:", error);
+            
+            if (!loginRes.ok) {
+                const error = await loginRes.text();
+                throw new Error(`Login failed (${loginRes.status}): ${error}`);
             }
+            
+            const loginData = await loginRes.json();
+            const token = loginData.token;
+            console.log("Login Success! Token obtained.");
+            
+            // STEP 2: CHAT (Use Token)
+            console.log("Step 2: Sending message to DeepSeek...");
+            const chatRes = await fetch(AI_CHAT_URL, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ message: 'Hello from the Educational Game! Are you working?' })
+            });
+            
+            if (!chatRes.ok) {
+                const error = await chatRes.text();
+                throw new Error(`Chat failed (${chatRes.status}): ${error}`);
+            }
+            
+            const chatData = await chatRes.json();
+            console.log("AI Response Results:", chatData.text || chatData);
+            
         } catch (err) {
-            console.error("AI Backend Connection Error (Check if server is accessible and CORS is enabled):", err);
+            console.error("AI Multi-Step Integration Error:", err);
+            console.warn("Hint: Ensure backend CORS is enabled for GitHub origin and allows 'Authorization' header.");
         }
-        console.log("--- AI Backend Test End ---");
+        console.log("--- AI Multi-Step Test (End) ---");
     }
 
     init();
