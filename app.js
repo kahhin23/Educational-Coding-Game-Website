@@ -49,7 +49,7 @@
     };
 
     // AI Backend URLs
-    const AI_BASE_URL = 'https://gacha-girls.co';
+    const AI_BASE_URL = 'https://gacha-girls.co:8080';
     const AI_LOGIN_URL = `${AI_BASE_URL}/api/program/login`;
     const AI_CHAT_URL = `${AI_BASE_URL}/api/program/chat`;
 
@@ -760,18 +760,11 @@
 
         try {
             // STEP 1: LOGIN (Get Token)
-            console.log("Step 1: Logging in to get token (trying bypass)...");
-            
-            // Using URLSearchParams creates a "Simple Request" (application/x-www-form-urlencoded)
-            // which bypasses the preflight check for the 'Content-Type' header.
-            const loginBody = new URLSearchParams();
-            loginBody.append('username', 'admin');
-            loginBody.append('password', 'hiddenboss123');
-
+            console.log("Step 1: Logging in to get token...");
             const loginRes = await fetch(AI_LOGIN_URL, {
                 method: 'POST',
-                // No headers: { 'Content-Type': 'application/json' } here!
-                body: loginBody
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: 'admin', password: 'hiddenboss123' })
             });
 
             if (!loginRes.ok) {
