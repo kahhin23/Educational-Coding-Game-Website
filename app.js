@@ -49,7 +49,7 @@
     };
 
     // AI Backend URL
-    const AI_API_URL = 'https://188.166.229.212:8080/api/deepseek/chat';
+    const AI_API_URL = 'http://188.166.229.212:8080/api/deepseek/chat';
 
     // CSV Parser Utility
     function parseCSV(text) {
