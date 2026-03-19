@@ -49,7 +49,7 @@
     };
 
     // AI Backend URLs
-    const AI_BASE_URL = 'http://188.166.229.212:8080';
+    const AI_BASE_URL = 'https://gacha-girls.co';
     const AI_LOGIN_URL = `${AI_BASE_URL}/api/program/login`;
     const AI_CHAT_URL = `${AI_BASE_URL}/api/program/chat`;
 
@@ -757,7 +757,7 @@
 
     async function testAIBackend() {
         console.log("--- AI Multi-Step Test Start (Processing Index Page) ---");
-        
+
         try {
             // STEP 1: LOGIN (Get Token)
             console.log("Step 1: Logging in to get token...");
@@ -766,35 +766,35 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username: 'admin', password: 'hiddenboss123' })
             });
-            
+
             if (!loginRes.ok) {
                 const error = await loginRes.text();
                 throw new Error(`Login failed (${loginRes.status}): ${error}`);
             }
-            
+
             const loginData = await loginRes.json();
             const token = loginData.token;
             console.log("Login Success! Token obtained.");
-            
+
             // STEP 2: CHAT (Use Token)
             console.log("Step 2: Sending message to DeepSeek...");
             const chatRes = await fetch(AI_CHAT_URL, {
                 method: 'POST',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({ message: 'Hello from the Educational Game! Are you working?' })
             });
-            
+
             if (!chatRes.ok) {
                 const error = await chatRes.text();
                 throw new Error(`Chat failed (${chatRes.status}): ${error}`);
             }
-            
+
             const chatData = await chatRes.json();
             console.log("AI Response Results:", chatData.text || chatData);
-            
+
         } catch (err) {
             console.error("AI Multi-Step Integration Error:", err);
             console.warn("Hint: Ensure backend CORS is enabled for GitHub origin and allows 'Authorization' header.");
