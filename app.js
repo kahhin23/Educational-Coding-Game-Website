@@ -52,6 +52,7 @@
     const AI_BASE_URL = 'https://gacha-girls.co:8080';
     const AI_LOGIN_URL = `${AI_BASE_URL}/api/program/login`;
     const AI_CHAT_URL = `${AI_BASE_URL}/api/program/chat`;
+    let aiToken = null;
 
     // CSV Parser Utility
     function parseCSV(text) {
@@ -210,11 +211,20 @@
     const btnRun = document.getElementById('btn-run');
     const editorFeedbackEl = document.getElementById('editor-feedback');
 
+    // AI Chat Elements
+    const aiChatbox = document.getElementById('ai-chatbox');
+    const aiChatBubble = document.getElementById('ai-chat-bubble');
+    const btnCloseChat = document.getElementById('btn-close-chat');
+    const btnSendChat = document.getElementById('btn-send-chat');
+    const chatInput = document.getElementById('chat-input');
+    const chatMessages = document.getElementById('chat-messages');
+
     // --- Initialization ---
     async function init() {
         initEventListeners();
         await initPyodide();
         await loadCourseData();
+        initAIChat();
 
         // AI Backend Test
         await testAIBackend();
@@ -708,6 +718,14 @@
         target.classList.add('active-view');
         target.style.display = 'flex'; // Explicitly show
 
+        // AI Chatbox Visibility Logic
+        if (target.id === 'view-stage') {
+            aiChatBubble.style.display = 'flex';
+        } else {
+            aiChatBubble.style.display = 'none';
+            aiChatbox.style.display = 'none';
+        }
+
         // Always hide payment overlay when switching main views
         hidePaymentOverlay();
     }
@@ -773,33 +791,87 @@
             }
 
             const loginData = await loginRes.json();
-            const token = loginData.token;
+            aiToken = loginData.token;
             console.log("Login Success! Token obtained.");
+        } catch (err) {
+            console.error("AI Login Error:", err);
+        }
+    }
 
-            // STEP 2: CHAT (Use Token)
-            console.log("Step 2: Sending message to DeepSeek...");
-            const chatRes = await fetch(AI_CHAT_URL, {
+    // --- AI Chat Logic ---
+    function initAIChat() {
+        if (!aiChatBubble || !btnCloseChat || !btnSendChat || !chatInput) return;
+
+        aiChatBubble.addEventListener('click', () => {
+            aiChatbox.style.display = 'flex';
+            aiChatBubble.style.display = 'none';
+            chatInput.focus();
+        });
+
+        btnCloseChat.addEventListener('click', () => {
+            aiChatbox.style.display = 'none';
+            aiChatBubble.style.display = 'flex';
+        });
+
+        btnSendChat.addEventListener('click', sendChatMessage);
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendChatMessage();
+        });
+    }
+
+    async function sendChatMessage() {
+        const message = chatInput.value.trim();
+        if (!message) return;
+
+        // Add user message to UI
+        addChatMessage(message, 'user');
+        chatInput.value = '';
+
+        // Typing indicator
+        const typingId = 'typing-' + Date.now();
+        const typingEl = document.createElement('div');
+        typingEl.className = 'message ai typing';
+        typingEl.id = typingId;
+        typingEl.textContent = 'Thinking...';
+        chatMessages.appendChild(typingEl);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        try {
+            if (!aiToken) {
+                // Try logging in again if token is missing
+                await testAIBackend(); 
+            }
+
+            if (!aiToken) throw new Error("Could not authenticate with AI.");
+
+            const res = await fetch(AI_CHAT_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Bearer ${aiToken}`
                 },
-                body: JSON.stringify({ message: 'Hello from the Educational Game! Are you working?' })
+                body: JSON.stringify({ message: message })
             });
 
-            if (!chatRes.ok) {
-                const error = await chatRes.text();
-                throw new Error(`Chat failed (${chatRes.status}): ${error}`);
-            }
-
-            const chatData = await chatRes.json();
-            console.log("AI Response Results:", chatData.text || chatData);
+            if (!res.ok) throw new Error(`AI Chat error: ${res.status}`);
+            
+            const data = await res.json();
+            typingEl.remove();
+            addChatMessage(data.text || "I'm sorry, I couldn't understand that.", 'ai');
 
         } catch (err) {
-            console.error("AI Multi-Step Integration Error:", err);
-            console.warn("Hint: Ensure backend CORS is enabled for GitHub origin and allows 'Authorization' header.");
+            console.error("Chat API Error:", err);
+            typingEl.remove();
+            addChatMessage("System error: Could not reach AI assistant.", 'ai');
         }
-        console.log("--- AI Multi-Step Test (End) ---");
+    }
+
+    function addChatMessage(text, sender) {
+        const msgEl = document.createElement('div');
+        msgEl.className = `message ${sender}`;
+        msgEl.textContent = text;
+        chatMessages.appendChild(msgEl);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
     init();

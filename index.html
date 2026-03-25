@@ -207,6 +207,35 @@
                 </div>
             </main>
         </div>
+
+        <!-- AI CHATBOX (Floating) -->
+        <div id="ai-chatbox" class="ai-chatbox glass-panel" style="display: none;">
+            <div class="chat-header">
+                <div class="chat-title">
+                    <i class="fa-solid fa-robot"></i>
+                    <span>AI Assistant</span>
+                </div>
+                <button id="btn-close-chat" class="btn-icon-sm" title="Minimize">
+                    <i class="fa-solid fa-minus"></i>
+                </button>
+            </div>
+            <div id="chat-messages" class="chat-messages">
+                <div class="message ai">
+                    Hello! I'm your AI tutor. Need help with this stage?
+                </div>
+            </div>
+            <div class="chat-input-area">
+                <input type="text" id="chat-input" placeholder="Ask a question..." autocomplete="off">
+                <button id="btn-send-chat" class="btn-primary-sm">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Floating Chat Bubble (When minimized) -->
+        <div id="ai-chat-bubble" class="ai-chat-bubble glass-panel" style="display: none;" title="Open AI Assistant">
+            <i class="fa-solid fa-robot"></i>
+        </div>
     </div>
 
     <!-- Scripts -->
